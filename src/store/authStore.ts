@@ -18,6 +18,7 @@ interface AuthState {
 
   init: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  setUser: (user: User | null) => void;
 
   requestOtp: (phone: string) => Promise<void>;
   verifyOtp: (phone: string, code: string) => Promise<void>;
@@ -66,6 +67,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     await AsyncStorage.setItem(ONBOARD_KEY, 'true');
     set({ onboardingDone: true });
   },
+
+  setUser: (user) => set({ user }),
 
   requestOtp: async (phone: string) => {
     if (isApiConfigured) {

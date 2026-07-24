@@ -4,7 +4,6 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 
-/** Telegram iOS-style tab bar */
 export default function TabsLayout() {
   const { colors } = useTheme();
   return (
@@ -23,6 +22,13 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="contacts"
+        options={{
+          title: 'Contacts',
+          tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: 'Chats',
@@ -30,26 +36,24 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="marketplace"
-        options={{
-          title: 'Market',
-          tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="ai"
         options={{
           title: 'AI',
-          tabBarIcon: ({ color, size }) => <Ionicons name="sparkles-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
+      <Tabs.Screen name="marketplace" options={{ href: null }} />
     </Tabs>
   );
 }

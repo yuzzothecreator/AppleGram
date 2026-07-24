@@ -32,6 +32,9 @@ yarn-error.*
 .env.*.local
 server/.env
 
+# uploads
+server/uploads/
+
 # IDE
 .idea/
 .vscode/

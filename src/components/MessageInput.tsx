@@ -1,17 +1,25 @@
 import { useTheme } from '@/theme/ThemeContext';
+import { Message } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 interface MessageInputProps {
   onSend: (text: string) => void;
   onAttach?: () => void;
   onVoice?: () => void;
+  replyTo?: Message | null;
+  onCancelReply?: () => void;
 }
 
-/** Telegram iOS composer: attach · Message · send / mic */
-export function MessageInput({ onSend, onAttach, onVoice }: MessageInputProps) {
+export function MessageInput({
+  onSend,
+  onAttach,
+  onVoice,
+  replyTo,
+  onCancelReply,
+}: MessageInputProps) {
   const { colors } = useTheme();
   const [text, setText] = useState('');
   const canSend = text.trim().length > 0;
@@ -24,49 +32,79 @@ export function MessageInput({ onSend, onAttach, onVoice }: MessageInputProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.separator }]}>
-      <Pressable onPress={onAttach} hitSlop={8} style={styles.iconBtn}>
-        <Ionicons name="attach" size={26} color={colors.textMuted} style={{ transform: [{ rotate: '-45deg' }] }} />
-      </Pressable>
+    <View style={[styles.wrap, { backgroundColor: colors.surface, borderTopColor: colors.separator }]}>
+      {replyTo ? (
+        <View style={[styles.replyBar, { borderLeftColor: colors.primary }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Reply</Text>
+            <Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 13 }}>
+              {replyTo.text || (replyTo.kind === 'image' ? 'Photo' : 'Message')}
+            </Text>
+          </View>
+          <Pressable onPress={onCancelReply} hitSlop={8}>
+            <Ionicons name="close" size={20} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      ) : null}
 
-      <View
-        style={[
-          styles.inputWrap,
-          { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
-        ]}
-      >
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          placeholder="Message"
-          placeholderTextColor={colors.textMuted}
-          multiline
-          style={[styles.input, { color: colors.text }]}
-        />
-        <Pressable hitSlop={6} style={styles.emojiBtn}>
-          <Ionicons name="happy-outline" size={22} color={colors.textMuted} />
+      <View style={styles.container}>
+        <Pressable onPress={onAttach} hitSlop={8} style={styles.iconBtn}>
+          <Ionicons
+            name="attach"
+            size={26}
+            color={colors.textMuted}
+            style={{ transform: [{ rotate: '-45deg' }] }}
+          />
+        </Pressable>
+
+        <View
+          style={[
+            styles.inputWrap,
+            { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+          ]}
+        >
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder="Message"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            style={[styles.input, { color: colors.text }]}
+          />
+          <Pressable hitSlop={6} style={styles.emojiBtn}>
+            <Ionicons name="happy-outline" size={22} color={colors.textMuted} />
+          </Pressable>
+        </View>
+
+        <Pressable
+          onPress={canSend ? handleSend : onVoice}
+          hitSlop={8}
+          style={[styles.sendBtn, { backgroundColor: colors.primary }]}
+        >
+          <Ionicons name={canSend ? 'arrow-up' : 'mic'} size={20} color={colors.onPrimary} />
         </Pressable>
       </View>
-
-      <Pressable
-        onPress={canSend ? handleSend : onVoice}
-        hitSlop={8}
-        style={[styles.sendBtn, { backgroundColor: colors.primary }]}
-      >
-        <Ionicons name={canSend ? 'arrow-up' : 'mic'} size={20} color={colors.onPrimary} />
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrap: { borderTopWidth: StyleSheet.hairlineWidth },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 12,
+    marginTop: 8,
+    paddingLeft: 10,
+    borderLeftWidth: 3,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
     paddingHorizontal: 8,
     paddingVertical: 6,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { paddingBottom: 8, paddingHorizontal: 2 },
   inputWrap: {

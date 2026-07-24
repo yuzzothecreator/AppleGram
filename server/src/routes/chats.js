@@ -1,87 +1,16 @@
 import { query } from '../db.js';
-
-function mapMessage(row) {
-  return {
-    id: row.id,
-    chatId: row.chat_id,
-    senderId: row.sender_id,
-    kind: row.kind,
-    text: row.body ?? undefined,
-    status: row.status,
-    createdAt: row.created_at,
-    editedAt: row.edited_at ?? undefined,
-    replyToId: row.reply_to_id ?? undefined,
-    encrypted: row.encrypted,
-    selfDestructSeconds: row.self_destruct_seconds ?? undefined,
-  };
-}
-
-function mapUser(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    username: row.username,
-    displayName: row.display_name,
-    email: row.email ?? undefined,
-    phone: row.phone ?? undefined,
-    avatarUrl: row.avatar_url ?? undefined,
-    bio: row.bio ?? undefined,
-    lastSeen: row.last_seen ?? undefined,
-    isBot: row.is_bot,
-    isPremium: row.is_premium,
-  };
-}
-
-async function peerForChat(chatId, userId) {
-  const { rows } = await query(
-    `select p.*
-     from chat_members cm
-     join profiles p on p.id = cm.user_id
-     where cm.chat_id = $1 and cm.user_id <> $2
-     limit 1`,
-    [chatId, userId],
-  );
-  return rows[0] ? mapUser(rows[0]) : null;
-}
-
-async function mapChat(row, userId) {
-  const peer = row.type === 'direct' ? await peerForChat(row.id, userId) : null;
-  const title =
-    row.type === 'direct' && peer
-      ? peer.displayName
-      : row.title || 'Chat';
-
-  let lastMessage;
-  if (row.last_message_id) {
-    lastMessage = {
-      id: row.last_message_id,
-      chatId: row.id,
-      senderId: row.last_sender_id,
-      kind: row.last_kind || 'text',
-      text: row.last_body ?? undefined,
-      status: row.last_status || 'sent',
-      createdAt: row.last_created_at,
-    };
-  }
-
-  return {
-    id: row.id,
-    type: row.type,
-    title,
-    avatarUrl: row.avatar_url || peer?.avatarUrl,
-    peerId: peer?.id,
-    lastMessage,
-    unreadCount: Number(row.unread_count || 0),
-    pinned: Boolean(row.pinned),
-    muted: Boolean(row.muted),
-    isEncrypted: row.is_encrypted,
-    selfDestructSeconds: row.self_destruct_seconds ?? undefined,
-    subscriberCount: row.subscriber_count,
-  };
-}
+import {
+  assertMember,
+  mapChat,
+  mapMessage,
+  mapUser,
+  requestBaseUrl,
+  touchLastSeen,
+} from '../lib/mappers.js';
 
 export async function listChats(req, res) {
   try {
+    await touchLastSeen(req.userId);
     const { rows } = await query(
       `select
          c.*,
@@ -108,9 +37,7 @@ export async function listChats(req, res) {
     );
 
     const chats = [];
-    for (const row of rows) {
-      chats.push(await mapChat(row, req.userId));
-    }
+    for (const row of rows) chats.push(await mapChat(row, req.userId));
     return res.json({ chats });
   } catch (err) {
     console.error('listChats', err);
@@ -153,28 +80,74 @@ export async function getChat(req, res) {
   }
 }
 
+export async function updateChatPrefs(req, res) {
+  try {
+    const chatId = req.params.id;
+    if (!(await assertMember(chatId, req.userId))) {
+      return res.status(403).json({ error: 'Not a member of this chat' });
+    }
+
+    const pinned = typeof req.body.pinned === 'boolean' ? req.body.pinned : null;
+    const muted = typeof req.body.muted === 'boolean' ? req.body.muted : null;
+
+    if (pinned === null && muted === null) {
+      return res.status(400).json({ error: 'Provide pinned and/or muted' });
+    }
+
+    if (pinned !== null) {
+      await query(
+        `update chat_members set pinned = $1 where chat_id = $2 and user_id = $3`,
+        [pinned, chatId, req.userId],
+      );
+    }
+    if (muted !== null) {
+      await query(
+        `update chat_members set muted = $1 where chat_id = $2 and user_id = $3`,
+        [muted, chatId, req.userId],
+      );
+    }
+
+    req.params = { id: chatId };
+    return getChat(req, res);
+  } catch (err) {
+    console.error('updateChatPrefs', err);
+    return res.status(500).json({ error: err.message || 'Failed to update chat' });
+  }
+}
+
 export async function listMessages(req, res) {
   try {
     const chatId = req.params.id;
-    const membership = await query(
-      `select 1 from chat_members where chat_id = $1 and user_id = $2`,
-      [chatId, req.userId],
-    );
-    if (!membership.rows.length) {
+    if (!(await assertMember(chatId, req.userId))) {
       return res.status(403).json({ error: 'Not a member of this chat' });
     }
 
     const after = req.query.after ? String(req.query.after) : null;
     const params = [chatId];
-    let sql = `select * from messages where chat_id = $1`;
+    let sql = `
+      select
+        m.*,
+        a.id as attachment_id,
+        a.storage_path,
+        a.kind as attach_kind,
+        a.mime_type,
+        a.width,
+        a.height,
+        r.body as reply_body,
+        r.sender_id as reply_sender_id
+      from messages m
+      left join attachments a on a.message_id = m.id
+      left join messages r on r.id = m.reply_to_id
+      where m.chat_id = $1`;
     if (after) {
       params.push(after);
-      sql += ` and created_at > $2`;
+      sql += ` and m.created_at > $2`;
     }
-    sql += ` order by created_at asc limit 200`;
+    sql += ` order by m.created_at asc limit 200`;
 
     const { rows } = await query(sql, params);
-    return res.json({ messages: rows.map(mapMessage) });
+    const baseUrl = requestBaseUrl(req);
+    return res.json({ messages: rows.map((r) => mapMessage(r, baseUrl)) });
   } catch (err) {
     console.error('listMessages', err);
     return res.status(500).json({ error: err.message || 'Failed to load messages' });
@@ -188,12 +161,7 @@ export async function sendMessage(req, res) {
     const replyToId = req.body.replyToId || null;
 
     if (!text) return res.status(400).json({ error: 'Message text is required' });
-
-    const membership = await query(
-      `select 1 from chat_members where chat_id = $1 and user_id = $2`,
-      [chatId, req.userId],
-    );
-    if (!membership.rows.length) {
+    if (!(await assertMember(chatId, req.userId))) {
       return res.status(403).json({ error: 'Not a member of this chat' });
     }
 
@@ -204,10 +172,83 @@ export async function sendMessage(req, res) {
       [chatId, req.userId, text, replyToId],
     );
 
-    return res.status(201).json({ message: mapMessage(rows[0]) });
+    await touchLastSeen(req.userId);
+    return res.status(201).json({ message: mapMessage(rows[0], requestBaseUrl(req)) });
   } catch (err) {
     console.error('sendMessage', err);
     return res.status(500).json({ error: err.message || 'Failed to send message' });
+  }
+}
+
+export async function sendImageMessage(req, res) {
+  try {
+    const chatId = req.params.id;
+    const replyToId = req.body.replyToId || null;
+    const caption = String(req.body.text || req.body.caption || '').trim() || null;
+
+    if (!(await assertMember(chatId, req.userId))) {
+      return res.status(403).json({ error: 'Not a member of this chat' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'Image file is required' });
+
+    const { rows } = await query(
+      `insert into messages (chat_id, sender_id, kind, body, status, reply_to_id)
+       values ($1, $2, 'image', $3, 'sent', $4)
+       returning *`,
+      [chatId, req.userId, caption, replyToId],
+    );
+    const message = rows[0];
+
+    const attach = await query(
+      `insert into attachments (message_id, kind, storage_path, mime_type, size_bytes, file_name)
+       values ($1, 'image', $2, $3, $4, $5)
+       returning *`,
+      [
+        message.id,
+        req.file.filename,
+        req.file.mimetype,
+        req.file.size,
+        req.file.originalname,
+      ],
+    );
+
+    await touchLastSeen(req.userId);
+    const mapped = mapMessage(
+      {
+        ...message,
+        attachment_id: attach.rows[0].id,
+        storage_path: attach.rows[0].storage_path,
+        attach_kind: 'image',
+        mime_type: attach.rows[0].mime_type,
+      },
+      requestBaseUrl(req),
+    );
+    return res.status(201).json({ message: mapped });
+  } catch (err) {
+    console.error('sendImageMessage', err);
+    return res.status(500).json({ error: err.message || 'Failed to send image' });
+  }
+}
+
+export async function deleteMessage(req, res) {
+  try {
+    const messageId = req.params.messageId;
+    const found = await query(`select * from messages where id = $1`, [messageId]);
+    if (!found.rows.length) return res.status(404).json({ error: 'Message not found' });
+
+    const msg = found.rows[0];
+    if (msg.sender_id !== req.userId) {
+      return res.status(403).json({ error: 'You can only delete your own messages' });
+    }
+    if (!(await assertMember(msg.chat_id, req.userId))) {
+      return res.status(403).json({ error: 'Not a member of this chat' });
+    }
+
+    await query(`delete from messages where id = $1`, [messageId]);
+    return res.json({ ok: true, id: messageId, chatId: msg.chat_id });
+  } catch (err) {
+    console.error('deleteMessage', err);
+    return res.status(500).json({ error: err.message || 'Failed to delete message' });
   }
 }
 
@@ -234,6 +275,37 @@ export async function searchUsers(req, res) {
   } catch (err) {
     console.error('searchUsers', err);
     return res.status(500).json({ error: err.message || 'Search failed' });
+  }
+}
+
+export async function listContacts(req, res) {
+  try {
+    await touchLastSeen(req.userId);
+    const { rows } = await query(
+      `select *
+       from profiles
+       where id <> $1
+       order by lower(display_name) asc
+       limit 200`,
+      [req.userId],
+    );
+    return res.json({ users: rows.map(mapUser) });
+  } catch (err) {
+    console.error('listContacts', err);
+    return res.status(500).json({ error: err.message || 'Failed to load contacts' });
+  }
+}
+
+export async function getUserProfile(req, res) {
+  try {
+    const { rows } = await query(`select * from profiles where id = $1 limit 1`, [
+      req.params.id,
+    ]);
+    if (!rows.length) return res.status(404).json({ error: 'User not found' });
+    return res.json({ user: mapUser(rows[0]) });
+  } catch (err) {
+    console.error('getUserProfile', err);
+    return res.status(500).json({ error: err.message || 'Failed to load user' });
   }
 }
 

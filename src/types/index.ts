@@ -66,6 +66,7 @@ export interface Message {
   createdAt: string; // ISO timestamp
   editedAt?: string;
   replyToId?: ID;
+  replyPreview?: { id: ID; text?: string; senderId?: ID };
   // E2EE / secret chats
   encrypted?: boolean;
   selfDestructSeconds?: number;

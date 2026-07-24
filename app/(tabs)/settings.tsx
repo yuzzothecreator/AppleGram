@@ -14,7 +14,7 @@ export default function Settings() {
   const { user, signOut } = useAuthStore();
 
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; tint?: string; onPress?: () => void }[] = [
-    { icon: 'person-circle', label: 'Edit profile', onPress: () => user && router.push(`/profile/${user.id}`) },
+    { icon: 'person-circle', label: 'Edit profile', onPress: () => router.push('/edit-profile') },
     { icon: 'notifications', label: 'Notifications' },
     { icon: 'lock-closed', label: 'Privacy & Security' },
     { icon: 'cloud-done', label: 'Data & Storage' },
@@ -80,7 +80,7 @@ export default function Settings() {
         <Text style={{ color: colors.danger, fontWeight: '700', fontSize: 16 }}>Sign out</Text>
       </Pressable>
 
-      <Text style={[styles.version, { color: colors.textMuted }]}>Teleprompt v0.1.0 (MVP)</Text>
+      <Text style={[styles.version, { color: colors.textMuted }]}>Applegram v0.1.0</Text>
     </ScrollView>
   );
 }

@@ -1,5 +1,5 @@
 import { CHATS, MESSAGES, SMART_REPLIES, USERS } from '@/data/mockData';
-import { api, isApiConfigured } from '@/lib/api';
+import { API_URL, api, getToken, isApiConfigured } from '@/lib/api';
 import { Chat, Message, SmartReply, User } from '@/types';
 
 const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
@@ -20,6 +20,18 @@ export async function getChat(chatId: string): Promise<Chat | undefined> {
   }
   await delay(60);
   return CHATS.find((c) => c.id === chatId);
+}
+
+export async function updateChatPrefs(
+  chatId: string,
+  prefs: { pinned?: boolean; muted?: boolean },
+): Promise<Chat> {
+  if (!isApiConfigured) throw new Error('API required');
+  const data = await api<{ chat: Chat }>(`/chats/${chatId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(prefs),
+  });
+  return data.chat;
 }
 
 export async function listMessages(chatId: string, after?: string): Promise<Message[]> {
@@ -61,11 +73,79 @@ export async function sendMessage(input: {
   return message;
 }
 
+export async function sendImageMessage(input: {
+  chatId: string;
+  uri: string;
+  mimeType?: string;
+  fileName?: string;
+  text?: string;
+  replyToId?: string;
+}): Promise<Message> {
+  if (!isApiConfigured) throw new Error('API required for images');
+
+  const token = await getToken();
+  const form = new FormData();
+  form.append('image', {
+    uri: input.uri,
+    name: input.fileName || 'photo.jpg',
+    type: input.mimeType || 'image/jpeg',
+  } as any);
+  if (input.text) form.append('text', input.text);
+  if (input.replyToId) form.append('replyToId', input.replyToId);
+
+  const res = await fetch(`${API_URL}/chats/${input.chatId}/messages/image`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || 'Upload failed');
+  return body.message as Message;
+}
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  if (!isApiConfigured) throw new Error('API required');
+  await api(`/messages/${messageId}`, { method: 'DELETE' });
+}
+
+export async function listContacts(): Promise<User[]> {
+  if (isApiConfigured) {
+    const data = await api<{ users: User[] }>('/users/contacts');
+    data.users.forEach(cacheUser);
+    return data.users;
+  }
+  return Object.values(USERS).filter((u) => u.id !== 'u_me');
+}
+
+export async function fetchUser(userId: string): Promise<User | null> {
+  if (isApiConfigured) {
+    const data = await api<{ user: User }>(`/users/${userId}`);
+    cacheUser(data.user);
+    return data.user;
+  }
+  return USERS[userId] ?? null;
+}
+
+export async function updateMyProfile(input: {
+  displayName?: string;
+  bio?: string;
+  username?: string;
+}): Promise<User> {
+  if (!isApiConfigured) throw new Error('API required');
+  const data = await api<{ user: User }>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+  cacheUser(data.user);
+  return data.user;
+}
+
 export async function searchUsers(query: string): Promise<User[]> {
   if (isApiConfigured) {
     const data = await api<{ users: User[] }>(
       `/users/search?q=${encodeURIComponent(query)}`,
     );
+    data.users.forEach(cacheUser);
     return data.users;
   }
   const q = query.trim().toLowerCase();
@@ -102,9 +182,6 @@ export async function getSmartReplies(): Promise<SmartReply[]> {
   return SMART_REPLIES;
 }
 
-/**
- * Poll for new messages when using the API; mock is a no-op.
- */
 export function subscribeToMessages(
   chatId: string,
   onMessage: (m: Message) => void,
@@ -123,19 +200,16 @@ export function subscribeToMessages(
         onMessage(m);
       }
     } catch {
-      // ignore transient poll errors
+      // ignore
     }
   };
 
-  // Seed latest from a full load first so we only emit new ones.
   listMessages(chatId)
     .then((all) => {
       if (all.length) latest = all[all.length - 1].createdAt;
     })
     .finally(() => {
-      if (!cancelled) {
-        void tick();
-      }
+      if (!cancelled) void tick();
     });
 
   const timer = setInterval(tick, 2500);
