@@ -44,6 +44,7 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(port, () => {
-  console.log(`Applegram API listening on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Applegram API listening on http://0.0.0.0:${port}`);
+  console.log(`Phone/emulator should use http://<this-pc-lan-ip>:${port}`);
 });

@@ -1,4 +1,4 @@
-import { isApiConfigured } from '@/lib/api';
+import { API_URL, isApiConfigured } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -84,6 +84,11 @@ export default function Login() {
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Welcome to Applegram</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>{subtitle}</Text>
+          {isApiConfigured ? (
+            <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 6 }} numberOfLines={1}>
+              {API_URL}
+            </Text>
+          ) : null}
         </View>
 
         <View style={[styles.tabs, { backgroundColor: colors.surface, borderRadius: radius.md }]}>

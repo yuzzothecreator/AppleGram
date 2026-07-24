@@ -13,10 +13,17 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.teleprompt.mobile"
+      "bundleIdentifier": "app.teleprompt.mobile",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "package": "app.teleprompt.mobile",
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0E1621"
       }
