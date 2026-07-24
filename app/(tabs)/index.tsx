@@ -1,10 +1,10 @@
 import { ChatListItem } from '@/components/ChatListItem';
-import { FloatingButton } from '@/components/FloatingButton';
+import { isApiConfigured } from '@/lib/api';
 import { useChatStore } from '@/store/chatStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -16,16 +16,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function ChatList() {
-  const { colors, spacing, radius } = useTheme();
+export default function MessagesScreen() {
+  const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { chats, loadingChats, loadChats } = useChatStore();
   const [query, setQuery] = useState('');
 
-  useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+  useFocusEffect(
+    useCallback(() => {
+      loadChats();
+    }, [loadChats]),
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -40,18 +42,32 @@ export default function ChatList() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={[styles.header, { paddingHorizontal: spacing.lg }]}>
-        <Text style={[styles.title, { color: colors.text }]}>Teleprompt</Text>
         <Pressable hitSlop={8}>
-          <Ionicons name="camera-outline" size={24} color={colors.text} />
+          <Text style={[styles.edit, { color: colors.primary }]}>Edit</Text>
+        </Pressable>
+        <Pressable hitSlop={8} onPress={() => router.push('/compose')}>
+          <Ionicons name="create-outline" size={26} color={colors.primary} />
         </Pressable>
       </View>
 
-      <View style={[styles.search, { backgroundColor: colors.surface, borderRadius: radius.md, marginHorizontal: spacing.lg }]}>
+      <Text style={[styles.largeTitle, { color: colors.text, paddingHorizontal: spacing.lg }]}>
+        Messages
+      </Text>
+
+      <View
+        style={[
+          styles.search,
+          {
+            backgroundColor: colors.surfaceElevated,
+            marginHorizontal: spacing.lg,
+          },
+        ]}
+      >
         <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search chats and messages"
+          placeholder="Search"
           placeholderTextColor={colors.textMuted}
           style={[styles.searchInput, { color: colors.text }]}
         />
@@ -64,29 +80,72 @@ export default function ChatList() {
           data={filtered}
           keyExtractor={(c) => c.id}
           renderItem={({ item }) => (
-            <ChatListItem chat={item} onPress={() => router.push(`/chat/${item.id}`)} />
+            <View style={{ backgroundColor: colors.surface }}>
+              <ChatListItem chat={item} onPress={() => router.push(`/chat/${item.id}`)} />
+            </View>
           )}
           ItemSeparatorComponent={() => (
-            <View style={[styles.sep, { backgroundColor: colors.separator, marginLeft: 84 }]} />
+            <View style={{ backgroundColor: colors.surface }}>
+              <View style={[styles.sep, { backgroundColor: colors.separator, marginLeft: 80 }]} />
+            </View>
           )}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
+          ListHeaderComponent={
+            <View style={{ backgroundColor: colors.surface, height: 8 }} />
+          }
           ListEmptyComponent={
-            <Text style={[styles.empty, { color: colors.textMuted }]}>No chats found.</Text>
+            <View style={styles.emptyWrap}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No Messages</Text>
+              <Text style={[styles.emptyBody, { color: colors.textMuted }]}>
+                {isApiConfigured
+                  ? 'Tap the compose button to message someone.'
+                  : 'Sign in with the API connected to start chatting.'}
+              </Text>
+              <Pressable
+                onPress={() => router.push('/compose')}
+                style={[styles.composeCta, { backgroundColor: colors.primary }]}
+              >
+                <Text style={{ color: colors.onPrimary, fontWeight: '600', fontSize: 17 }}>
+                  Compose
+                </Text>
+              </Pressable>
+            </View>
           }
         />
       )}
-
-      <FloatingButton icon="create" onPress={() => router.push('/(tabs)/ai')} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  title: { fontSize: 26, fontWeight: '800' },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 42, marginTop: 4, marginBottom: 8 },
-  searchInput: { flex: 1, fontSize: 15 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+    paddingBottom: 2,
+  },
+  edit: { fontSize: 17 },
+  largeTitle: { fontSize: 34, fontWeight: '700', letterSpacing: 0.4, marginBottom: 8 },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    height: 36,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  searchInput: { flex: 1, fontSize: 17, paddingVertical: 0 },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { textAlign: 'center', marginTop: 40 },
+  emptyWrap: { alignItems: 'center', paddingHorizontal: 40, marginTop: 60, gap: 8 },
+  emptyTitle: { fontSize: 22, fontWeight: '700' },
+  emptyBody: { fontSize: 15, textAlign: 'center', lineHeight: 21 },
+  composeCta: {
+    marginTop: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 22,
+  },
 });

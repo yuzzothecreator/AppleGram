@@ -1,41 +1,34 @@
 /**
- * Teleprompt color tokens. Telegram-inspired but with our own accent.
- * Keep all color usage going through these palettes so theming stays consistent.
+ * Applegram color tokens — iPhone Messages inspired.
  */
 
 export type ThemeName = 'light' | 'dark';
 
 export interface Palette {
-  // surfaces
   background: string;
   surface: string;
   surfaceElevated: string;
   chatBackground: string;
 
-  // text
   text: string;
   textSecondary: string;
   textMuted: string;
   textInverse: string;
 
-  // brand / accent
   primary: string;
   primaryMuted: string;
   onPrimary: string;
 
-  // chat bubbles
   bubbleOut: string;
   bubbleOutText: string;
   bubbleIn: string;
   bubbleInText: string;
 
-  // status & feedback
   success: string;
   danger: string;
   warning: string;
   online: string;
 
-  // lines & misc
   border: string;
   separator: string;
   overlay: string;
@@ -43,65 +36,65 @@ export interface Palette {
 }
 
 const light: Palette = {
-  background: '#FFFFFF',
-  surface: '#F4F5F7',
+  background: '#F2F2F7',
+  surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
-  chatBackground: '#E7EBF0',
+  chatBackground: '#FFFFFF',
 
-  text: '#0E1621',
-  textSecondary: '#3A4A5C',
-  textMuted: '#8A98A6',
+  text: '#000000',
+  textSecondary: '#3C3C43',
+  textMuted: '#8E8E93',
   textInverse: '#FFFFFF',
 
-  primary: '#2E7CF6',
-  primaryMuted: '#D7E6FE',
+  primary: '#007AFF',
+  primaryMuted: '#E5F1FF',
   onPrimary: '#FFFFFF',
 
-  bubbleOut: '#2E7CF6',
+  bubbleOut: '#007AFF',
   bubbleOutText: '#FFFFFF',
-  bubbleIn: '#FFFFFF',
-  bubbleInText: '#0E1621',
+  bubbleIn: '#E9E9EB',
+  bubbleInText: '#000000',
 
-  success: '#2BB673',
-  danger: '#E5484D',
-  warning: '#F5A623',
+  success: '#34C759',
+  danger: '#FF3B30',
+  warning: '#FF9500',
   online: '#34C759',
 
-  border: '#E2E6EB',
-  separator: '#ECEFF3',
-  overlay: 'rgba(14,22,33,0.45)',
-  shadow: 'rgba(14,22,33,0.12)',
+  border: '#C6C6C8',
+  separator: '#C6C6C8',
+  overlay: 'rgba(0,0,0,0.4)',
+  shadow: 'rgba(0,0,0,0.12)',
 };
 
 const dark: Palette = {
-  background: '#0E1621',
-  surface: '#17212B',
-  surfaceElevated: '#1D2733',
-  chatBackground: '#0B1620',
+  background: '#000000',
+  surface: '#1C1C1E',
+  surfaceElevated: '#2C2C2E',
+  chatBackground: '#000000',
 
   text: '#FFFFFF',
-  textSecondary: '#AEBAC6',
-  textMuted: '#6E7C8A',
-  textInverse: '#0E1621',
+  textSecondary: '#EBEBF5',
+  textMuted: '#8E8E93',
+  textInverse: '#000000',
 
-  primary: '#5AA0FF',
-  primaryMuted: '#1E3A5F',
+  primary: '#0A84FF',
+  primaryMuted: '#0A2847',
   onPrimary: '#FFFFFF',
 
-  bubbleOut: '#2B5278',
+  bubbleOut: '#0A84FF',
   bubbleOutText: '#FFFFFF',
-  bubbleIn: '#1D2733',
+  bubbleIn: '#3A3A3C',
   bubbleInText: '#FFFFFF',
 
-  success: '#4CD08A',
-  danger: '#FF6168',
-  warning: '#F7B955',
-  online: '#3DDC84',
+  success: '#30D158',
+  danger: '#FF453A',
+  warning: '#FF9F0A',
+  online: '#30D158',
 
-  border: '#22303C',
-  separator: '#1A2730',
+  border: '#38383A',
+  separator: '#38383A',
   overlay: 'rgba(0,0,0,0.55)',
-  shadow: 'rgba(0,0,0,0.4)',
+  shadow: 'rgba(0,0,0,0.5)',
 };
 
 export const palettes: Record<ThemeName, Palette> = { light, dark };
@@ -116,16 +109,16 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 8,
+  sm: 10,
   md: 14,
   lg: 20,
   pill: 999,
 } as const;
 
 export const typography = {
-  title: { fontSize: 22, fontWeight: '700' as const },
+  title: { fontSize: 34, fontWeight: '700' as const },
   heading: { fontSize: 17, fontWeight: '600' as const },
-  body: { fontSize: 16, fontWeight: '400' as const },
+  body: { fontSize: 17, fontWeight: '400' as const },
   caption: { fontSize: 13, fontWeight: '400' as const },
   tiny: { fontSize: 11, fontWeight: '500' as const },
 };

@@ -68,6 +68,7 @@ function RootNavigator() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="compose" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="profile/[id]" options={{ presentation: 'modal' }} />
         </Stack>
       </AuthGate>

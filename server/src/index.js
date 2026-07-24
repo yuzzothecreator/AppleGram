@@ -4,6 +4,14 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { authMiddleware, me, signIn, signUp } from './routes/auth.js';
+import {
+  createDirectChat,
+  getChat,
+  listChats,
+  listMessages,
+  searchUsers,
+  sendMessage,
+} from './routes/chats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../.env') });
@@ -22,6 +30,14 @@ app.get('/health', (_req, res) => {
 app.post('/auth/signup', signUp);
 app.post('/auth/signin', signIn);
 app.get('/auth/me', authMiddleware, me);
+
+app.get('/users/search', authMiddleware, searchUsers);
+
+app.get('/chats', authMiddleware, listChats);
+app.post('/chats/direct', authMiddleware, createDirectChat);
+app.get('/chats/:id', authMiddleware, getChat);
+app.get('/chats/:id/messages', authMiddleware, listMessages);
+app.post('/chats/:id/messages', authMiddleware, sendMessage);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

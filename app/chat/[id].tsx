@@ -1,15 +1,15 @@
 import { Avatar } from '@/components/Avatar';
 import { ChatBubble } from '@/components/ChatBubble';
 import { MessageInput } from '@/components/MessageInput';
-import { SmartReplies } from '@/components/SmartReplies';
-import { getSmartReplies, getUser } from '@/services/chatService';
+import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { useTheme } from '@/theme/ThemeContext';
-import { Message, SmartReply } from '@/types';
+import { Message } from '@/types';
 import { formatLastSeen } from '@/utils/format';
+import { getUser } from '@/services/chatService';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -22,20 +22,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ME = 'u_me';
-
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = String(id);
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const listRef = useRef<FlatList<Message>>(null);
+  const me = useAuthStore((s) => s.user);
 
   const { activeChat, openChat, send, subscribe, messagesByChat, loadingMessages } = useChatStore();
   const messages = messagesByChat[chatId] ?? [];
   const loading = loadingMessages[chatId];
-  const [smartReplies, setSmartReplies] = useState<SmartReply[]>([]);
 
   useEffect(() => {
     openChat(chatId);
@@ -43,26 +41,19 @@ export default function ChatScreen() {
     return unsub;
   }, [chatId, openChat, subscribe]);
 
-  useEffect(() => {
-    const last = messages[messages.length - 1];
-    if (last && last.senderId !== ME) {
-      getSmartReplies().then(setSmartReplies);
-    } else {
-      setSmartReplies([]);
-    }
-  }, [messages.length]);
-
   const peer = activeChat?.peerId ? getUser(activeChat.peerId) : undefined;
   const subtitle =
     activeChat?.type === 'channel'
-      ? `${activeChat.subscriberCount?.toLocaleString()} subscribers`
+      ? `${activeChat.subscriberCount?.toLocaleString() ?? 0} subscribers`
       : activeChat?.type === 'group'
         ? `${activeChat.members?.length ?? 0} members`
-        : formatLastSeen(peer);
+        : peer
+          ? formatLastSeen(peer)
+          : 'tap for info';
 
   const handleSend = (text: string) => {
-    send(chatId, ME, text);
-    setSmartReplies([]);
+    if (!me) return;
+    send(chatId, me.id, text);
     requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
   };
 
@@ -71,30 +62,46 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.container, { backgroundColor: colors.chatBackground }]}
     >
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, paddingTop: insets.top, borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={{ paddingRight: 4 }}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: colors.surface,
+            paddingTop: insets.top,
+            borderBottomColor: colors.separator,
+          },
+        ]}
+      >
+        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={28} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontSize: 17 }}>Messages</Text>
         </Pressable>
+
         <Pressable
-          style={styles.headerInfo}
+          style={styles.headerCenter}
           onPress={() => activeChat?.peerId && router.push(`/profile/${activeChat.peerId}`)}
         >
-          <Avatar id={chatId} name={activeChat?.title ?? '…'} uri={activeChat?.avatarUrl} size={40} online={peer?.isOnline} />
-          <View style={{ flex: 1 }}>
-            <Text numberOfLines={1} style={[styles.headerTitle, { color: colors.text }]}>
-              {activeChat?.isEncrypted ? '🔒 ' : ''}{activeChat?.title ?? 'Loading…'}
-            </Text>
-            <Text numberOfLines={1} style={[styles.headerSub, { color: colors.textMuted }]}>{subtitle}</Text>
-          </View>
+          <Avatar
+            id={chatId}
+            name={activeChat?.title ?? '…'}
+            uri={activeChat?.avatarUrl}
+            size={36}
+            online={peer?.isOnline}
+          />
+          <Text numberOfLines={1} style={[styles.headerTitle, { color: colors.text }]}>
+            {activeChat?.title ?? 'Loading…'}
+          </Text>
+          <Text numberOfLines={1} style={[styles.headerSub, { color: colors.textMuted }]}>
+            {subtitle}
+          </Text>
         </Pressable>
-        <Pressable hitSlop={8}>
-          <Ionicons name="ellipsis-vertical" size={22} color={colors.text} />
+
+        <Pressable hitSlop={8} style={{ width: 70, alignItems: 'flex-end' }}>
+          <Ionicons name="videocam" size={24} color={colors.primary} />
         </Pressable>
       </View>
 
-      {/* Messages */}
-      {loading ? (
+      {loading && messages.length === 0 ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 30 }} />
       ) : (
         <FlatList
@@ -103,8 +110,9 @@ export default function ChatScreen() {
           keyExtractor={(m) => m.id}
           renderItem={({ item, index }) => {
             const prev = messages[index - 1];
-            const isMine = item.senderId === ME;
-            const showSender = activeChat?.type !== 'direct' && !isMine && prev?.senderId !== item.senderId;
+            const isMine = item.senderId === me?.id;
+            const showSender =
+              activeChat?.type !== 'direct' && !isMine && prev?.senderId !== item.senderId;
             return (
               <ChatBubble
                 message={item}
@@ -113,14 +121,12 @@ export default function ChatScreen() {
               />
             );
           }}
-          contentContainerStyle={{ paddingVertical: 10 }}
+          contentContainerStyle={{ paddingVertical: 12 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         />
       )}
 
-      <SmartReplies replies={smartReplies} onPick={handleSend} />
-
-      <View style={{ paddingBottom: insets.bottom }}>
+      <View style={{ paddingBottom: Math.max(insets.bottom, 8), backgroundColor: colors.surface }}>
         <MessageInput onSend={handleSend} />
       </View>
     </KeyboardAvoidingView>
@@ -129,8 +135,15 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 16, fontWeight: '700' },
-  headerSub: { fontSize: 12, marginTop: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backBtn: { flexDirection: 'row', alignItems: 'center', width: 100 },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { fontSize: 15, fontWeight: '600', marginTop: 2 },
+  headerSub: { fontSize: 12 },
 });

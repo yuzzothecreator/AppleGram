@@ -22,6 +22,7 @@ interface ChatState {
   send: (chatId: string, senderId: string, text: string, replyToId?: string) => Promise<void>;
   receive: (message: Message) => void;
   subscribe: (chatId: string) => () => void;
+  upsertChat: (chat: Chat) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -33,8 +34,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadChats: async () => {
     set({ loadingChats: true });
-    const chats = await listChats();
-    set({ chats, loadingChats: false });
+    try {
+      const chats = await listChats();
+      set({ chats, loadingChats: false });
+    } catch {
+      set({ loadingChats: false });
+    }
   },
 
   openChat: async (chatId) => {
@@ -45,11 +50,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadMessages: async (chatId) => {
     set((s) => ({ loadingMessages: { ...s.loadingMessages, [chatId]: true } }));
-    const messages = await listMessages(chatId);
-    set((s) => ({
-      messagesByChat: { ...s.messagesByChat, [chatId]: messages },
-      loadingMessages: { ...s.loadingMessages, [chatId]: false },
-    }));
+    try {
+      const messages = await listMessages(chatId);
+      set((s) => ({
+        messagesByChat: { ...s.messagesByChat, [chatId]: messages },
+        loadingMessages: { ...s.loadingMessages, [chatId]: false },
+      }));
+    } catch {
+      set((s) => ({
+        loadingMessages: { ...s.loadingMessages, [chatId]: false },
+      }));
+    }
   },
 
   send: async (chatId, senderId, text, replyToId) => {
@@ -70,29 +81,62 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
     }));
 
-    const saved = await sendMessage({ chatId, senderId, text, replyToId });
-
-    set((s) => ({
-      messagesByChat: {
-        ...s.messagesByChat,
-        [chatId]: (s.messagesByChat[chatId] ?? []).map((m) =>
-          m.id === optimistic.id ? saved : m,
+    try {
+      const saved = await sendMessage({ chatId, senderId, text, replyToId });
+      set((s) => ({
+        messagesByChat: {
+          ...s.messagesByChat,
+          [chatId]: (s.messagesByChat[chatId] ?? []).map((m) =>
+            m.id === optimistic.id ? saved : m,
+          ),
+        },
+        chats: s.chats.map((c) =>
+          c.id === chatId ? { ...c, lastMessage: saved, unreadCount: 0 } : c,
         ),
-      },
-      chats: s.chats.map((c) =>
-        c.id === chatId ? { ...c, lastMessage: saved, unreadCount: 0 } : c,
-      ),
-    }));
+      }));
+    } catch {
+      set((s) => ({
+        messagesByChat: {
+          ...s.messagesByChat,
+          [chatId]: (s.messagesByChat[chatId] ?? []).map((m) =>
+            m.id === optimistic.id ? { ...m, status: 'failed' } : m,
+          ),
+        },
+      }));
+    }
   },
 
   receive: (message) => {
-    set((s) => ({
-      messagesByChat: {
-        ...s.messagesByChat,
-        [message.chatId]: [...(s.messagesByChat[message.chatId] ?? []), message],
-      },
-    }));
+    set((s) => {
+      const existing = s.messagesByChat[message.chatId] ?? [];
+      if (existing.some((m) => m.id === message.id)) return s;
+      // Drop matching optimistic temp bubble
+      const withoutTemp = existing.filter(
+        (m) =>
+          !(
+            m.id.startsWith('temp_') &&
+            m.text === message.text &&
+            m.senderId === message.senderId
+          ),
+      );
+      return {
+        messagesByChat: {
+          ...s.messagesByChat,
+          [message.chatId]: [...withoutTemp, message],
+        },
+        chats: s.chats.map((c) =>
+          c.id === message.chatId ? { ...c, lastMessage: message } : c,
+        ),
+      };
+    });
   },
 
   subscribe: (chatId) => subscribeToMessages(chatId, (m) => get().receive(m)),
+
+  upsertChat: (chat) => {
+    set((s) => {
+      const others = s.chats.filter((c) => c.id !== chat.id);
+      return { chats: [chat, ...others] };
+    });
+  },
 }));

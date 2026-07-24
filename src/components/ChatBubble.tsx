@@ -1,10 +1,11 @@
-import { StatusTicks } from '@/components/StatusTicks';
+import { Avatar } from '@/components/Avatar';
 import { useTheme } from '@/theme/ThemeContext';
 import { Message } from '@/types';
 import { formatTime } from '@/utils/format';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { StatusTicks } from '@/components/StatusTicks';
 
 interface ChatBubbleProps {
   message: Message;
@@ -14,18 +15,21 @@ interface ChatBubbleProps {
 }
 
 export function ChatBubble({ message, isMine, showTail = true, senderName }: ChatBubbleProps) {
-  const { colors, radius, spacing } = useTheme();
+  const { colors, spacing } = useTheme();
 
   const bubbleColor = isMine ? colors.bubbleOut : colors.bubbleIn;
   const textColor = isMine ? colors.bubbleOutText : colors.bubbleInText;
-  const metaColor = isMine ? 'rgba(255,255,255,0.7)' : colors.textMuted;
+  const metaColor = isMine ? 'rgba(255,255,255,0.75)' : colors.textMuted;
 
   return (
     <Animated.View
-      entering={FadeInDown.duration(180)}
+      entering={FadeInDown.duration(160)}
       style={[
         styles.row,
-        { justifyContent: isMine ? 'flex-end' : 'flex-start', paddingHorizontal: spacing.md },
+        {
+          justifyContent: isMine ? 'flex-end' : 'flex-start',
+          paddingHorizontal: spacing.md,
+        },
       ]}
     >
       <View
@@ -33,30 +37,20 @@ export function ChatBubble({ message, isMine, showTail = true, senderName }: Cha
           styles.bubble,
           {
             backgroundColor: bubbleColor,
-            borderRadius: radius.lg,
-            borderBottomRightRadius: isMine && showTail ? radius.sm : radius.lg,
-            borderBottomLeftRadius: !isMine && showTail ? radius.sm : radius.lg,
+            borderBottomRightRadius: isMine && showTail ? 4 : 18,
+            borderBottomLeftRadius: !isMine && showTail ? 4 : 18,
           },
         ]}
       >
-        {!isMine && senderName && (
+        {!isMine && senderName ? (
           <Text style={[styles.sender, { color: colors.primary }]}>{senderName}</Text>
-        )}
-
-        {message.encrypted && (
-          <Text style={[styles.lock, { color: metaColor }]}>🔒 encrypted</Text>
-        )}
+        ) : null}
 
         <Text style={[styles.text, { color: textColor }]}>{message.text}</Text>
 
         <View style={styles.meta}>
-          {message.selfDestructSeconds ? (
-            <Text style={[styles.timer, { color: metaColor }]}>
-              ⏱ {message.selfDestructSeconds}s
-            </Text>
-          ) : null}
           <Text style={[styles.time, { color: metaColor }]}>{formatTime(message.createdAt)}</Text>
-          {isMine && <StatusTicks status={message.status} tint={metaColor} />}
+          {isMine ? <StatusTicks status={message.status} tint={metaColor} /> : null}
         </View>
       </View>
     </Animated.View>
@@ -64,12 +58,22 @@ export function ChatBubble({ message, isMine, showTail = true, senderName }: Cha
 }
 
 const styles = StyleSheet.create({
-  row: { width: '100%', marginVertical: 2 },
-  bubble: { maxWidth: '78%', paddingHorizontal: 12, paddingVertical: 8 },
-  sender: { fontSize: 13, fontWeight: '700', marginBottom: 2 },
-  lock: { fontSize: 11, marginBottom: 2 },
-  text: { fontSize: 16, lineHeight: 21 },
-  meta: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', gap: 4, marginTop: 2 },
+  row: { width: '100%', marginVertical: 1.5 },
+  bubble: {
+    maxWidth: '78%',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 6,
+    borderRadius: 18,
+  },
+  sender: { fontSize: 12, fontWeight: '600', marginBottom: 2 },
+  text: { fontSize: 17, lineHeight: 22 },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    marginTop: 2,
+  },
   time: { fontSize: 11 },
-  timer: { fontSize: 11 },
 });
