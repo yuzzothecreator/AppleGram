@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Teleprompt",
-    "slug": "teleprompt",
+    "name": "AppleGram",
+    "slug": "applegram",
     "version": "0.1.0",
     "orientation": "portrait",
-    "scheme": "teleprompt",
+    "scheme": "applegram",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.teleprompt.mobile",
+      "bundleIdentifier": "app.applegram.mobile",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true,
@@ -22,7 +22,7 @@
       }
     },
     "android": {
-      "package": "app.teleprompt.mobile",
+      "package": "app.applegram.mobile",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0E1621"
@@ -38,7 +38,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Teleprompt needs access to your photos to share media in chats."
+          "photosPermission": "AppleGram needs access to your photos to share media in chats."
         }
       ],
       "expo-asset",
