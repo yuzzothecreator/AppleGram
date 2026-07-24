@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Teleprompt",
+    "slug": "teleprompt",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "teleprompt",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0E1621"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.teleprompt.mobile"
+    },
+    "android": {
+      "package": "app.teleprompt.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E1621"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Teleprompt needs access to your photos to share media in chats."
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "supabaseUrl": "",
+      "supabaseAnonKey": ""
+    }
+  }
+}
