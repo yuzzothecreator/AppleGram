@@ -1,5 +1,10 @@
 import { CURRENT_USER } from '@/data/mockData';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import {
+  fetchCurrentProfile,
+  signInWithEmail as signInWithEmailService,
+  signUpWithEmail as signUpWithEmailService,
+} from '@/services/authService';
 import { User } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -18,14 +23,19 @@ interface AuthState {
 
   // Email flow
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    displayName: string,
+  ) => Promise<{ needsEmailConfirmation: boolean }>;
 
   signOut: () => Promise<void>;
 }
 
-const ONBOARD_KEY = 'teleprompt.onboarding.done';
-const SESSION_KEY = 'teleprompt.mock.session';
+const ONBOARD_KEY = 'applegram.onboarding.done';
+const SESSION_KEY = 'applegram.mock.session';
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   initializing: true,
   onboardingDone: false,
@@ -38,15 +48,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     let user: User | null = null;
     if (isSupabaseConfigured && supabase) {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        user = {
-          id: data.user.id,
-          username: data.user.user_metadata?.username ?? 'user',
-          displayName: data.user.user_metadata?.display_name ?? 'User',
-          email: data.user.email ?? undefined,
-          phone: data.user.phone ?? undefined,
-        };
+      try {
+        user = await fetchCurrentProfile();
+      } catch {
+        user = null;
       }
     } else if (mockSession) {
       user = CURRENT_USER;
@@ -64,15 +69,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.signInWithOtp({ phone });
       if (error) throw error;
+      return;
     }
     // Mock: pretend an SMS with code 123456 was sent.
   },
 
   verifyOtp: async (phone: string, code: string) => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token: code,
+        type: 'sms',
+      });
       if (error) throw error;
-      await get().init();
+      const user = await fetchCurrentProfile();
+      set({ user });
       return;
     }
     if (code !== '123456') throw new Error('Invalid code. (Demo code is 123456)');
@@ -82,9 +93,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signInWithEmail: async (email: string, password: string) => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      await get().init();
+      const user = await signInWithEmailService(email, password);
+      set({ user });
       return;
     }
     if (!email.includes('@') || password.length < 4) {
@@ -92,6 +102,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     await AsyncStorage.setItem(SESSION_KEY, '1');
     set({ user: { ...CURRENT_USER, email } });
+  },
+
+  signUpWithEmail: async (email, password, displayName) => {
+    if (isSupabaseConfigured && supabase) {
+      const result = await signUpWithEmailService({ email, password, displayName });
+      if (result.user) set({ user: result.user });
+      return { needsEmailConfirmation: result.needsEmailConfirmation };
+    }
+
+    // Mock signup
+    if (!email.includes('@') || password.length < 4) {
+      throw new Error('Enter a valid email and a password of 4+ characters.');
+    }
+    if (displayName.trim().length < 2) {
+      throw new Error('Enter a display name (2+ characters).');
+    }
+    await AsyncStorage.setItem(SESSION_KEY, '1');
+    set({
+      user: {
+        ...CURRENT_USER,
+        email,
+        displayName: displayName.trim(),
+        username: email.split('@')[0] ?? 'user',
+      },
+    });
+    return { needsEmailConfirmation: false };
   },
 
   signOut: async () => {

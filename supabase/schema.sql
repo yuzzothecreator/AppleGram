@@ -42,6 +42,50 @@ create table if not exists profiles (
   created_at    timestamptz not null default now()
 );
 
+-- Auto-create a profiles row whenever a new auth user signs up.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  base_username text;
+  final_username text;
+begin
+  base_username := coalesce(
+    nullif(trim(new.raw_user_meta_data->>'username'), ''),
+    split_part(coalesce(new.email, new.phone, 'user'), '@', 1)
+  );
+  base_username := lower(regexp_replace(base_username, '[^a-z0-9_]+', '_', 'g'));
+  base_username := trim(both '_' from base_username);
+  if base_username = '' then
+    base_username := 'user';
+  end if;
+  final_username := base_username || '_' || substr(replace(new.id::text, '-', ''), 1, 6);
+
+  insert into public.profiles (id, username, display_name, email, phone)
+  values (
+    new.id,
+    final_username,
+    coalesce(
+      nullif(trim(new.raw_user_meta_data->>'display_name'), ''),
+      base_username
+    ),
+    new.email,
+    new.phone
+  )
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- ---------------------------------------------------------------------------
 -- CHATS
 -- ---------------------------------------------------------------------------

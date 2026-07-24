@@ -10,12 +10,19 @@ import 'react-native-url-polyfill/auto';
  * without a backend — see src/data/mockApi.ts.
  */
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const url = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
-export const isSupabaseConfigured = Boolean(url && anonKey);
+const looksConfigured = Boolean(
+  url &&
+    anonKey &&
+    !url.includes('YOUR_PROJECT_REF') &&
+    !anonKey.includes('YOUR_SUPABASE_ANON_KEY'),
+);
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
+export const isSupabaseConfigured = looksConfigured;
+
+export const supabase: SupabaseClient | null = looksConfigured
   ? createClient(url as string, anonKey as string, {
       auth: {
         storage: AsyncStorage,
