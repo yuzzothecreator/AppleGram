@@ -1,4 +1,5 @@
 import { ChatListItem } from '@/components/ChatListItem';
+import { FloatingButton } from '@/components/FloatingButton';
 import { isApiConfigured } from '@/lib/api';
 import { useChatStore } from '@/store/chatStore';
 import { useTheme } from '@/theme/ThemeContext';
@@ -16,7 +17,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function MessagesScreen() {
+/** Telegram iOS Chats tab */
+export default function ChatsScreen() {
   const { colors, spacing } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -43,24 +45,18 @@ export default function MessagesScreen() {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={[styles.header, { paddingHorizontal: spacing.lg }]}>
         <Pressable hitSlop={8}>
-          <Text style={[styles.edit, { color: colors.primary }]}>Edit</Text>
+          <Text style={[styles.headerAction, { color: colors.primary }]}>Edit</Text>
         </Pressable>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Chats</Text>
         <Pressable hitSlop={8} onPress={() => router.push('/compose')}>
-          <Ionicons name="create-outline" size={26} color={colors.primary} />
+          <Ionicons name="create-outline" size={24} color={colors.primary} />
         </Pressable>
       </View>
-
-      <Text style={[styles.largeTitle, { color: colors.text, paddingHorizontal: spacing.lg }]}>
-        Messages
-      </Text>
 
       <View
         style={[
           styles.search,
-          {
-            backgroundColor: colors.surfaceElevated,
-            marginHorizontal: spacing.lg,
-          },
+          { backgroundColor: colors.surfaceElevated, marginHorizontal: spacing.lg },
         ]}
       >
         <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -80,39 +76,26 @@ export default function MessagesScreen() {
           data={filtered}
           keyExtractor={(c) => c.id}
           renderItem={({ item }) => (
-            <View style={{ backgroundColor: colors.surface }}>
-              <ChatListItem chat={item} onPress={() => router.push(`/chat/${item.id}`)} />
-            </View>
+            <ChatListItem chat={item} onPress={() => router.push(`/chat/${item.id}`)} />
           )}
-          ItemSeparatorComponent={() => (
-            <View style={{ backgroundColor: colors.surface }}>
-              <View style={[styles.sep, { backgroundColor: colors.separator, marginLeft: 80 }]} />
-            </View>
-          )}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: 40 }}
-          ListHeaderComponent={
-            <View style={{ backgroundColor: colors.surface, height: 8 }} />
-          }
+          contentContainerStyle={{ paddingBottom: 100 }}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>No Messages</Text>
+              <View style={[styles.emptyIcon, { backgroundColor: colors.primaryMuted }]}>
+                <Ionicons name="chatbubbles" size={36} color={colors.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No chats yet</Text>
               <Text style={[styles.emptyBody, { color: colors.textMuted }]}>
                 {isApiConfigured
-                  ? 'Tap the compose button to message someone.'
-                  : 'Sign in with the API connected to start chatting.'}
+                  ? 'Tap the pencil to start a new conversation.'
+                  : 'Connect the API, then start chatting.'}
               </Text>
-              <Pressable
-                onPress={() => router.push('/compose')}
-                style={[styles.composeCta, { backgroundColor: colors.primary }]}
-              >
-                <Text style={{ color: colors.onPrimary, fontWeight: '600', fontSize: 17 }}>
-                  Compose
-                </Text>
-              </Pressable>
             </View>
           }
         />
       )}
+
+      <FloatingButton icon="pencil" onPress={() => router.push('/compose')} />
     </View>
   );
 }
@@ -123,11 +106,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 4,
-    paddingBottom: 2,
+    paddingVertical: 10,
   },
-  edit: { fontSize: 17 },
-  largeTitle: { fontSize: 34, fontWeight: '700', letterSpacing: 0.4, marginBottom: 8 },
+  headerAction: { fontSize: 17, width: 48 },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
   search: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -135,17 +117,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     height: 36,
     borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 4,
   },
-  searchInput: { flex: 1, fontSize: 17, paddingVertical: 0 },
-  sep: { height: StyleSheet.hairlineWidth },
-  emptyWrap: { alignItems: 'center', paddingHorizontal: 40, marginTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 22, fontWeight: '700' },
+  searchInput: { flex: 1, fontSize: 16, paddingVertical: 0 },
+  emptyWrap: { alignItems: 'center', paddingHorizontal: 40, marginTop: 80, gap: 10 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: '700' },
   emptyBody: { fontSize: 15, textAlign: 'center', lineHeight: 21 },
-  composeCta: {
-    marginTop: 12,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 22,
-  },
 });

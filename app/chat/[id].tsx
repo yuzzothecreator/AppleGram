@@ -1,12 +1,12 @@
 import { Avatar } from '@/components/Avatar';
 import { ChatBubble } from '@/components/ChatBubble';
 import { MessageInput } from '@/components/MessageInput';
+import { getUser } from '@/services/chatService';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Message } from '@/types';
 import { formatLastSeen } from '@/utils/format';
-import { getUser } from '@/services/chatService';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/** Telegram iOS conversation screen */
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const chatId = String(id);
@@ -49,7 +50,7 @@ export default function ChatScreen() {
         ? `${activeChat.members?.length ?? 0} members`
         : peer
           ? formatLastSeen(peer)
-          : 'tap for info';
+          : 'last seen recently';
 
   const handleSend = (text: string) => {
     if (!me) return;
@@ -74,31 +75,37 @@ export default function ChatScreen() {
       >
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={28} color={colors.primary} />
-          <Text style={{ color: colors.primary, fontSize: 17 }}>Messages</Text>
         </Pressable>
 
         <Pressable
-          style={styles.headerCenter}
+          style={styles.headerInfo}
           onPress={() => activeChat?.peerId && router.push(`/profile/${activeChat.peerId}`)}
         >
           <Avatar
             id={chatId}
             name={activeChat?.title ?? '…'}
             uri={activeChat?.avatarUrl}
-            size={36}
+            size={40}
             online={peer?.isOnline}
           />
-          <Text numberOfLines={1} style={[styles.headerTitle, { color: colors.text }]}>
-            {activeChat?.title ?? 'Loading…'}
-          </Text>
-          <Text numberOfLines={1} style={[styles.headerSub, { color: colors.textMuted }]}>
-            {subtitle}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={[styles.headerTitle, { color: colors.text }]}>
+              {activeChat?.title ?? 'Loading…'}
+            </Text>
+            <Text numberOfLines={1} style={[styles.headerSub, { color: colors.textMuted }]}>
+              {subtitle}
+            </Text>
+          </View>
         </Pressable>
 
-        <Pressable hitSlop={8} style={{ width: 70, alignItems: 'flex-end' }}>
-          <Ionicons name="videocam" size={24} color={colors.primary} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable hitSlop={8}>
+            <Ionicons name="call" size={22} color={colors.primary} />
+          </Pressable>
+          <Pressable hitSlop={8}>
+            <Ionicons name="ellipsis-vertical" size={20} color={colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
       {loading && messages.length === 0 ? (
@@ -121,12 +128,12 @@ export default function ChatScreen() {
               />
             );
           }}
-          contentContainerStyle={{ paddingVertical: 12 }}
+          contentContainerStyle={{ paddingVertical: 10 }}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         />
       )}
 
-      <View style={{ paddingBottom: Math.max(insets.bottom, 8), backgroundColor: colors.surface }}>
+      <View style={{ paddingBottom: Math.max(insets.bottom, 4), backgroundColor: colors.surface }}>
         <MessageInput onSend={handleSend} />
       </View>
     </KeyboardAvoidingView>
@@ -138,12 +145,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { flexDirection: 'row', alignItems: 'center', width: 100 },
-  headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 15, fontWeight: '600', marginTop: 2 },
-  headerSub: { fontSize: 12 },
+  backBtn: { paddingHorizontal: 2 },
+  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, paddingLeft: 2 },
+  headerTitle: { fontSize: 16, fontWeight: '600' },
+  headerSub: { fontSize: 13, marginTop: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 10 },
 });

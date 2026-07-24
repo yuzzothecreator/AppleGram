@@ -1,5 +1,5 @@
 /**
- * Applegram color tokens — iPhone Messages inspired.
+ * Applegram — Telegram iOS color tokens.
  */
 
 export type ThemeName = 'light' | 'dark';
@@ -36,65 +36,65 @@ export interface Palette {
 }
 
 const light: Palette = {
-  background: '#F2F2F7',
+  background: '#FFFFFF',
   surface: '#FFFFFF',
-  surfaceElevated: '#FFFFFF',
-  chatBackground: '#FFFFFF',
+  surfaceElevated: '#F1F1F1',
+  chatBackground: '#B7C9DB',
 
   text: '#000000',
-  textSecondary: '#3C3C43',
-  textMuted: '#8E8E93',
+  textSecondary: '#3A3A3C',
+  textMuted: '#8A8A8E',
   textInverse: '#FFFFFF',
 
-  primary: '#007AFF',
-  primaryMuted: '#E5F1FF',
+  primary: '#3390EC',
+  primaryMuted: '#E3F0FC',
   onPrimary: '#FFFFFF',
 
-  bubbleOut: '#007AFF',
-  bubbleOutText: '#FFFFFF',
-  bubbleIn: '#E9E9EB',
+  bubbleOut: '#EEFFDE',
+  bubbleOutText: '#000000',
+  bubbleIn: '#FFFFFF',
   bubbleInText: '#000000',
 
-  success: '#34C759',
-  danger: '#FF3B30',
-  warning: '#FF9500',
-  online: '#34C759',
+  success: '#4FAE4E',
+  danger: '#E53935',
+  warning: '#F5A623',
+  online: '#4FAE4E',
 
-  border: '#C6C6C8',
-  separator: '#C6C6C8',
+  border: '#D9D9D9',
+  separator: '#D9D9D9',
   overlay: 'rgba(0,0,0,0.4)',
-  shadow: 'rgba(0,0,0,0.12)',
+  shadow: 'rgba(0,0,0,0.18)',
 };
 
 const dark: Palette = {
-  background: '#000000',
-  surface: '#1C1C1E',
-  surfaceElevated: '#2C2C2E',
-  chatBackground: '#000000',
+  background: '#0E1621',
+  surface: '#17212B',
+  surfaceElevated: '#232E3C',
+  chatBackground: '#0E1621',
 
-  text: '#FFFFFF',
-  textSecondary: '#EBEBF5',
-  textMuted: '#8E8E93',
-  textInverse: '#000000',
+  text: '#F5F5F5',
+  textSecondary: '#B1C3D5',
+  textMuted: '#6D7F8F',
+  textInverse: '#0E1621',
 
-  primary: '#0A84FF',
-  primaryMuted: '#0A2847',
+  primary: '#6AB3F3',
+  primaryMuted: '#1E3A5F',
   onPrimary: '#FFFFFF',
 
-  bubbleOut: '#0A84FF',
+  bubbleOut: '#2B5278',
   bubbleOutText: '#FFFFFF',
-  bubbleIn: '#3A3A3C',
+  bubbleIn: '#182533',
   bubbleInText: '#FFFFFF',
 
-  success: '#30D158',
-  danger: '#FF453A',
-  warning: '#FF9F0A',
-  online: '#30D158',
+  success: '#4FAE4E',
+  danger: '#E53935',
+  warning: '#F5A623',
+  online: '#4FAE4E',
 
-  border: '#38383A',
-  separator: '#38383A',
+  border: '#0F1A24',
+  separator: '#0F1A24',
   overlay: 'rgba(0,0,0,0.55)',
-  shadow: 'rgba(0,0,0,0.5)',
+  shadow: 'rgba(0,0,0,0.45)',
 };
 
 export const palettes: Record<ThemeName, Palette> = { light, dark };
@@ -109,16 +109,16 @@ export const spacing = {
 } as const;
 
 export const radius = {
-  sm: 10,
-  md: 14,
-  lg: 20,
+  sm: 8,
+  md: 12,
+  lg: 16,
   pill: 999,
 } as const;
 
 export const typography = {
-  title: { fontSize: 34, fontWeight: '700' as const },
+  title: { fontSize: 28, fontWeight: '700' as const },
   heading: { fontSize: 17, fontWeight: '600' as const },
-  body: { fontSize: 17, fontWeight: '400' as const },
+  body: { fontSize: 16, fontWeight: '400' as const },
   caption: { fontSize: 13, fontWeight: '400' as const },
   tiny: { fontSize: 11, fontWeight: '500' as const },
 };
