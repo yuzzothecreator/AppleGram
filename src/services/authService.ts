@@ -1,3 +1,4 @@
+import { api, AuthResponse, isApiConfigured, setToken } from '@/lib/api';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { User } from '@/types';
 
@@ -34,8 +35,18 @@ function usernameFromEmail(email: string): string {
   return base.slice(0, 24);
 }
 
-/** Load the signed-in user's profile from Supabase (or null if none). */
+/** Prefer Neon API; fall back to Supabase if configured. */
 export async function fetchCurrentProfile(): Promise<User | null> {
+  if (isApiConfigured) {
+    try {
+      const data = await api<{ user: User }>('/auth/me');
+      return data.user;
+    } catch {
+      await setToken(null);
+      return null;
+    }
+  }
+
   if (!isSupabaseConfigured || !supabase) return null;
 
   const { data: authData, error: authError } = await supabase.auth.getUser();
@@ -50,11 +61,9 @@ export async function fetchCurrentProfile(): Promise<User | null> {
     .maybeSingle();
 
   if (error) throw error;
-
   if (data) return mapProfile(data as ProfileRow);
 
-  // Fallback if the DB trigger hasn't run yet (e.g. schema not applied).
-  return ensureProfile({
+  return ensureSupabaseProfile({
     id: authUser.id,
     email: authUser.email,
     phone: authUser.phone,
@@ -68,29 +77,27 @@ export async function fetchCurrentProfile(): Promise<User | null> {
   });
 }
 
-/** Insert or update the caller's profile row. */
-export async function ensureProfile(input: {
+async function ensureSupabaseProfile(input: {
   id: string;
   username: string;
   displayName: string;
   email?: string | null;
   phone?: string | null;
 }): Promise<User> {
-  if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured.');
-  }
-
-  const payload = {
-    id: input.id,
-    username: input.username,
-    display_name: input.displayName,
-    email: input.email ?? null,
-    phone: input.phone ?? null,
-  };
+  if (!supabase) throw new Error('Supabase is not configured.');
 
   const { data, error } = await supabase
     .from('profiles')
-    .upsert(payload, { onConflict: 'id' })
+    .upsert(
+      {
+        id: input.id,
+        username: input.username,
+        display_name: input.displayName,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+      },
+      { onConflict: 'id' },
+    )
     .select('*')
     .single();
 
@@ -103,8 +110,18 @@ export async function signUpWithEmail(input: {
   password: string;
   displayName: string;
 }): Promise<{ needsEmailConfirmation: boolean; user: User | null }> {
+  if (isApiConfigured) {
+    const data = await api<AuthResponse>('/auth/signup', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify(input),
+    });
+    await setToken(data.token);
+    return { needsEmailConfirmation: false, user: data.user };
+  }
+
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured. Copy .env.example to .env.');
+    throw new Error('No backend configured. Set EXPO_PUBLIC_API_URL (Neon API) in .env.');
   }
 
   const email = input.email.trim().toLowerCase();
@@ -118,33 +135,36 @@ export async function signUpWithEmail(input: {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: input.password,
-    options: {
-      data: {
-        display_name: displayName,
-        username,
-      },
-    },
+    options: { data: { display_name: displayName, username } },
   });
   if (error) throw error;
 
-  // Email confirmation may be required — no session until confirmed.
   if (!data.session || !data.user) {
     return { needsEmailConfirmation: true, user: null };
   }
 
-  const user = await ensureProfile({
+  const user = await ensureSupabaseProfile({
     id: data.user.id,
     username,
     displayName,
     email,
   });
-
   return { needsEmailConfirmation: false, user };
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<User> {
+  if (isApiConfigured) {
+    const data = await api<AuthResponse>('/auth/signin', {
+      method: 'POST',
+      auth: false,
+      body: JSON.stringify({ email, password }),
+    });
+    await setToken(data.token);
+    return data.user;
+  }
+
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Supabase is not configured. Copy .env.example to .env.');
+    throw new Error('No backend configured. Set EXPO_PUBLIC_API_URL (Neon API) in .env.');
   }
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -154,6 +174,13 @@ export async function signInWithEmail(email: string, password: string): Promise<
   if (error) throw error;
 
   const user = await fetchCurrentProfile();
-  if (!user) throw new Error('Signed in, but no profile was found. Run supabase/schema.sql.');
+  if (!user) throw new Error('Signed in, but no profile was found.');
   return user;
+}
+
+export async function signOutRemote(): Promise<void> {
+  await setToken(null);
+  if (isSupabaseConfigured && supabase) {
+    await supabase.auth.signOut();
+  }
 }

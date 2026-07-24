@@ -8,7 +8,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "server": "npm --prefix server run dev",
+    "server:start": "npm --prefix server run start",
+    "db:migrate": "npm --prefix server run db:migrate"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

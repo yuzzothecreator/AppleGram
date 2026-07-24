@@ -1,4 +1,4 @@
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { isApiConfigured } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -65,6 +65,10 @@ export default function Login() {
     }
   };
 
+  const subtitle = isApiConfigured
+    ? 'Sign in with email — connected to your Neon database.'
+    : 'Demo mode — OTP code is 123456.';
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -79,11 +83,7 @@ export default function Login() {
             <Ionicons name="paper-plane" size={30} color={colors.onPrimary} />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>Welcome to Applegram</Text>
-          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            {isSupabaseConfigured
-              ? 'Sign in with email to use your real account.'
-              : 'Demo mode — OTP code is 123456.'}
-          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>{subtitle}</Text>
         </View>
 
         <View style={[styles.tabs, { backgroundColor: colors.surface, borderRadius: radius.md }]}>
@@ -121,11 +121,22 @@ export default function Login() {
             />
           ) : (
             <>
-              <View style={[styles.tabs, { backgroundColor: colors.surfaceElevated, borderRadius: radius.md, marginHorizontal: 0 }]}>
-                {([
-                  { key: 'signin', label: 'Sign in' },
-                  { key: 'signup', label: 'Sign up' },
-                ] as const).map((m) => (
+              <View
+                style={[
+                  styles.tabs,
+                  {
+                    backgroundColor: colors.surfaceElevated,
+                    borderRadius: radius.md,
+                    marginHorizontal: 0,
+                  },
+                ]}
+              >
+                {(
+                  [
+                    { key: 'signin', label: 'Sign in' },
+                    { key: 'signup', label: 'Sign up' },
+                  ] as const
+                ).map((m) => (
                   <Pressable
                     key={m.key}
                     onPress={() => {
@@ -177,7 +188,7 @@ export default function Login() {
           )}
 
           {error && <Text style={{ color: colors.danger }}>{error}</Text>}
-          {info && <Text style={{ color: colors.success ?? colors.primary }}>{info}</Text>}
+          {info && <Text style={{ color: colors.success }}>{info}</Text>}
 
           <Pressable
             onPress={submit}

@@ -1,8 +1,10 @@
 import { CURRENT_USER } from '@/data/mockData';
+import { isApiConfigured } from '@/lib/api';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import {
   fetchCurrentProfile,
   signInWithEmail as signInWithEmailService,
+  signOutRemote,
   signUpWithEmail as signUpWithEmailService,
 } from '@/services/authService';
 import { User } from '@/types';
@@ -17,11 +19,9 @@ interface AuthState {
   init: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
 
-  // Phone OTP flow
   requestOtp: (phone: string) => Promise<void>;
   verifyOtp: (phone: string, code: string) => Promise<void>;
 
-  // Email flow
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (
     email: string,
@@ -35,6 +35,8 @@ interface AuthState {
 const ONBOARD_KEY = 'applegram.onboarding.done';
 const SESSION_KEY = 'applegram.mock.session';
 
+const hasRealBackend = () => isApiConfigured || isSupabaseConfigured;
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   initializing: true,
@@ -47,7 +49,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     ]);
 
     let user: User | null = null;
-    if (isSupabaseConfigured && supabase) {
+    if (hasRealBackend()) {
       try {
         user = await fetchCurrentProfile();
       } catch {
@@ -66,15 +68,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   requestOtp: async (phone: string) => {
+    if (isApiConfigured) {
+      throw new Error('Phone OTP is not available yet. Use email sign-in.');
+    }
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.signInWithOtp({ phone });
       if (error) throw error;
       return;
     }
-    // Mock: pretend an SMS with code 123456 was sent.
   },
 
   verifyOtp: async (phone: string, code: string) => {
+    if (isApiConfigured) {
+      throw new Error('Phone OTP is not available yet. Use email sign-in.');
+    }
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.auth.verifyOtp({
         phone,
@@ -92,7 +99,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signInWithEmail: async (email: string, password: string) => {
-    if (isSupabaseConfigured && supabase) {
+    if (hasRealBackend()) {
       const user = await signInWithEmailService(email, password);
       set({ user });
       return;
@@ -105,13 +112,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signUpWithEmail: async (email, password, displayName) => {
-    if (isSupabaseConfigured && supabase) {
+    if (hasRealBackend()) {
       const result = await signUpWithEmailService({ email, password, displayName });
       if (result.user) set({ user: result.user });
       return { needsEmailConfirmation: result.needsEmailConfirmation };
     }
 
-    // Mock signup
     if (!email.includes('@') || password.length < 4) {
       throw new Error('Enter a valid email and a password of 4+ characters.');
     }
@@ -131,9 +137,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.auth.signOut();
-    }
+    await signOutRemote();
     await AsyncStorage.removeItem(SESSION_KEY);
     set({ user: null });
   },
