@@ -10,13 +10,16 @@ import {
   createDirectChat,
   deleteMessage,
   getChat,
+  getChatTyping,
   getUserProfile,
   listChats,
   listContacts,
   listMessages,
+  markChatRead,
   searchUsers,
   sendImageMessage,
   sendMessage,
+  setChatTyping,
   updateChatPrefs,
 } from './routes/chats.js';
 
@@ -66,6 +69,9 @@ app.get('/chats', authMiddleware, listChats);
 app.post('/chats/direct', authMiddleware, createDirectChat);
 app.get('/chats/:id', authMiddleware, getChat);
 app.patch('/chats/:id', authMiddleware, updateChatPrefs);
+app.post('/chats/:id/read', authMiddleware, markChatRead);
+app.post('/chats/:id/typing', authMiddleware, setChatTyping);
+app.get('/chats/:id/typing', authMiddleware, getChatTyping);
 app.get('/chats/:id/messages', authMiddleware, listMessages);
 app.post('/chats/:id/messages', authMiddleware, sendMessage);
 app.post('/chats/:id/messages/image', authMiddleware, upload.single('image'), sendImageMessage);

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "db:migrate": "node src/migrate.js"
+    "db:migrate": "node src/migrate.js",
+    "db:migrate:file": "node src/run-migration.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",

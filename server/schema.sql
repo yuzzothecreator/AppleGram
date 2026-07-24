@@ -67,9 +67,14 @@ create table if not exists chat_members (
   joined_at  timestamptz not null default now(),
   muted      boolean not null default false,
   pinned     boolean not null default false,
+  last_read_at timestamptz not null default now(),
   primary key (chat_id, user_id)
 );
 create index if not exists idx_chat_members_user on chat_members(user_id);
+
+-- Unread: last time this member read the chat
+alter table chat_members
+  add column if not exists last_read_at timestamptz not null default now();
 
 -- ---------------------------------------------------------------------------
 -- MESSAGES

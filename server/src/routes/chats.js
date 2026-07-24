@@ -7,6 +7,81 @@ import {
   requestBaseUrl,
   touchLastSeen,
 } from '../lib/mappers.js';
+import { getTypingUserIds, setTyping } from '../lib/typing.js';
+
+export async function markChatRead(req, res) {
+  try {
+    const chatId = req.params.id;
+    if (!(await assertMember(chatId, req.userId))) {
+      return res.status(403).json({ error: 'Not a member of this chat' });
+    }
+
+    await query(
+      `update chat_members
+       set last_read_at = now()
+       where chat_id = $1 and user_id = $2`,
+      [chatId, req.userId],
+    );
+
+    // Mark others' messages as seen for this chat
+    await query(
+      `update messages
+       set status = 'seen'
+       where chat_id = $1
+         and sender_id is distinct from $2
+         and status <> 'seen'`,
+      [chatId, req.userId],
+    );
+
+    return res.json({ ok: true, chatId, unreadCount: 0 });
+  } catch (err) {
+    console.error('markChatRead', err);
+    return res.status(500).json({ error: err.message || 'Failed to mark read' });
+  }
+}
+
+export async function setChatTyping(req, res) {
+  try {
+    const chatId = req.params.id;
+    if (!(await assertMember(chatId, req.userId))) {
+      return res.status(403).json({ error: 'Not a member of this chat' });
+    }
+    const isTyping = Boolean(req.body.isTyping);
+    setTyping(chatId, req.userId, isTyping);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('setChatTyping', err);
+    return res.status(500).json({ error: err.message || 'Failed to set typing' });
+  }
+}
+
+export async function getChatTyping(req, res) {
+  try {
+    const chatId = req.params.id;
+    if (!(await assertMember(chatId, req.userId))) {
+      return res.status(403).json({ error: 'Not a member of this chat' });
+    }
+
+    const ids = getTypingUserIds(chatId, req.userId);
+    if (!ids.length) return res.json({ typing: [] });
+
+    const { rows } = await query(
+      `select id, display_name, username from profiles where id = any($1::uuid[])`,
+      [ids],
+    );
+
+    return res.json({
+      typing: rows.map((r) => ({
+        userId: r.id,
+        displayName: r.display_name,
+        username: r.username,
+      })),
+    });
+  } catch (err) {
+    console.error('getChatTyping', err);
+    return res.status(500).json({ error: err.message || 'Failed to get typing' });
+  }
+}
 
 export async function listChats(req, res) {
   try {
@@ -22,7 +97,13 @@ export async function listChats(req, res) {
          lm.kind as last_kind,
          lm.status as last_status,
          lm.created_at as last_created_at,
-         0 as unread_count
+         (
+           select count(*)::int
+           from messages m
+           where m.chat_id = c.id
+             and m.sender_id is distinct from $1
+             and m.created_at > coalesce(cm.last_read_at, to_timestamp(0))
+         ) as unread_count
        from chats c
        join chat_members cm on cm.chat_id = c.id and cm.user_id = $1
        left join lateral (

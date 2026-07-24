@@ -42,11 +42,14 @@ export default function ChatScreen() {
     removeMessage,
     setChatPrefs,
     subscribe,
+    notifyTyping,
     messagesByChat,
     loadingMessages,
+    typingByChat,
   } = useChatStore();
   const messages = messagesByChat[chatId] ?? [];
   const loading = loadingMessages[chatId];
+  const typing = typingByChat[chatId] ?? [];
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [menuMsg, setMenuMsg] = useState<Message | null>(null);
 
@@ -57,14 +60,21 @@ export default function ChatScreen() {
   }, [chatId, openChat, subscribe]);
 
   const peer = activeChat?.peerId ? getUser(activeChat.peerId) : undefined;
+  const typingLabel =
+    typing.length === 1
+      ? 'typing...'
+      : typing.length > 1
+        ? 'several people are typing...'
+        : null;
   const subtitle =
-    activeChat?.type === 'channel'
+    typingLabel ??
+    (activeChat?.type === 'channel'
       ? `${activeChat.subscriberCount?.toLocaleString() ?? 0} subscribers`
       : activeChat?.type === 'group'
         ? `${activeChat.members?.length ?? 0} members`
         : peer
           ? formatLastSeen(peer)
-          : 'last seen recently';
+          : 'last seen recently');
 
   const handleSend = (text: string) => {
     if (!me) return;
@@ -138,7 +148,13 @@ export default function ChatScreen() {
             <Text numberOfLines={1} style={[styles.headerTitle, { color: colors.text }]}>
               {activeChat?.title ?? 'Loading…'}
             </Text>
-            <Text numberOfLines={1} style={[styles.headerSub, { color: colors.textMuted }]}>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.headerSub,
+                { color: typingLabel ? colors.primary : colors.textMuted },
+              ]}
+            >
               {subtitle}
             </Text>
           </View>
@@ -204,6 +220,7 @@ export default function ChatScreen() {
           onAttach={pickImage}
           replyTo={replyTo}
           onCancelReply={() => setReplyTo(null)}
+          onTypingChange={(isTyping) => notifyTyping(chatId, isTyping)}
         />
       </View>
 

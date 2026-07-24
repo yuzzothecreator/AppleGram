@@ -11,6 +11,7 @@ interface MessageInputProps {
   onVoice?: () => void;
   replyTo?: Message | null;
   onCancelReply?: () => void;
+  onTypingChange?: (isTyping: boolean) => void;
 }
 
 export function MessageInput({
@@ -19,14 +20,37 @@ export function MessageInput({
   onVoice,
   replyTo,
   onCancelReply,
+  onTypingChange,
 }: MessageInputProps) {
   const { colors } = useTheme();
   const [text, setText] = useState('');
   const canSend = text.trim().length > 0;
+  const typingRef = React.useRef(false);
+  const stopTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const emitTyping = (next: boolean) => {
+    if (typingRef.current === next) return;
+    typingRef.current = next;
+    onTypingChange?.(next);
+  };
+
+  const handleChange = (value: string) => {
+    setText(value);
+    if (value.trim()) {
+      emitTyping(true);
+      if (stopTimer.current) clearTimeout(stopTimer.current);
+      stopTimer.current = setTimeout(() => emitTyping(false), 2000);
+    } else {
+      if (stopTimer.current) clearTimeout(stopTimer.current);
+      emitTyping(false);
+    }
+  };
 
   const handleSend = () => {
     if (!canSend) return;
     if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    if (stopTimer.current) clearTimeout(stopTimer.current);
+    emitTyping(false);
     onSend(text.trim());
     setText('');
   };
@@ -64,9 +88,9 @@ export function MessageInput({
           ]}
         >
           <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder="Message"
+          value={text}
+          onChangeText={handleChange}
+          placeholder="Message"
             placeholderTextColor={colors.textMuted}
             multiline
             style={[styles.input, { color: colors.text }]}

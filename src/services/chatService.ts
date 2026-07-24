@@ -108,6 +108,37 @@ export async function deleteMessage(messageId: string): Promise<void> {
   await api(`/messages/${messageId}`, { method: 'DELETE' });
 }
 
+export async function markChatRead(chatId: string): Promise<void> {
+  if (!isApiConfigured) return;
+  await api(`/chats/${chatId}/read`, { method: 'POST', body: JSON.stringify({}) });
+}
+
+export async function setTyping(chatId: string, isTyping: boolean): Promise<void> {
+  if (!isApiConfigured) return;
+  try {
+    await api(`/chats/${chatId}/typing`, {
+      method: 'POST',
+      body: JSON.stringify({ isTyping }),
+    });
+  } catch {
+    // ignore typing errors
+  }
+}
+
+export async function getTyping(
+  chatId: string,
+): Promise<{ userId: string; displayName: string }[]> {
+  if (!isApiConfigured) return [];
+  try {
+    const data = await api<{ typing: { userId: string; displayName: string }[] }>(
+      `/chats/${chatId}/typing`,
+    );
+    return data.typing;
+  } catch {
+    return [];
+  }
+}
+
 export async function listContacts(): Promise<User[]> {
   if (isApiConfigured) {
     const data = await api<{ users: User[] }>('/users/contacts');
